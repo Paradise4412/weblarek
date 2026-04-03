@@ -1,14 +1,14 @@
-import { IBuyer } from '../../types/index'
+import { IBuyer, TBuyerErrors } from '../../types/index'
 
 export class BuyerData {
 	protected data: IBuyer
 
-	constructor(init: Partial<IBuyer> = {}) {
+	constructor() {
 		this.data = {
-			payment: init.payment || null,
-			email: init.email || '',
-			phone: init.phone || '',
-			address: init.address || '',
+			payment: null,
+			email: '',
+			phone: '',
+			address: '',
 		}
 	}
 
@@ -29,8 +29,8 @@ export class BuyerData {
 		}
 	}
 
-	validate(): Record<string, string> {
-		const errors: Record<string, string> = {}
+	validate(): TBuyerErrors {
+		const errors: TBuyerErrors = {}
 
 		if (!this.data.payment) {
 			errors.payment = 'не выбран вид оплаты'

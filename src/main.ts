@@ -48,7 +48,7 @@ console.log('после сохранения полных данных, ошиб
 console.log('все данные покупателя:', buyer.getBuyer())
 
 console.log('\nЗагрузка товаров с сервера')
-const api = new Api('https://larek-api.nomoreparties.com')
+const api = new Api(`${import.meta.env.VITE_API_ORIGIN}/api/weblarek`)
 const apiService = new ApiService(api)
 
 apiService
