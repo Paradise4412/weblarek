@@ -4,6 +4,7 @@ import { Cart } from './components/Models/Cart'
 import { ProductCatalog } from './components/Models/ProductCatalog'
 import { Api } from './components/base/Api'
 import './scss/styles.scss'
+import { API_URL } from './utils/constants'
 import { apiProducts } from './utils/data'
 
 console.log('ProductCatalog')
@@ -48,7 +49,7 @@ console.log('после сохранения полных данных, ошиб
 console.log('все данные покупателя:', buyer.getBuyer())
 
 console.log('\nЗагрузка товаров с сервера')
-const api = new Api(`${import.meta.env.VITE_API_ORIGIN}/api/weblarek`)
+const api = new Api(API_URL)
 const apiService = new ApiService(api)
 
 apiService
