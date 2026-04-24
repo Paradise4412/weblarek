@@ -1,4 +1,3 @@
-import { IBuyer } from '../../types/index'
 import { IEvents } from '../base/Events'
 import { Form } from './Form'
 
@@ -30,13 +29,11 @@ export class ContactsForm extends Form {
 		})
 	}
 
-	render(data?: Partial<IBuyer>): HTMLElement {
-		if (data?.email) {
-			this.emailInput.value = data.email
-		}
-		if (data?.phone) {
-			this.phoneInput.value = data.phone
-		}
-		return this.container
+	set email(value: string) {
+		this.emailInput.value = value
+	}
+
+	set phone(value: string) {
+		this.phoneInput.value = value
 	}
 }

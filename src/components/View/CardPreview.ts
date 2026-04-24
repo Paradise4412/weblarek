@@ -1,30 +1,32 @@
-import { IProduct } from '../../types/index'
-import { IEvents } from '../base/Events'
-import { Card } from './Card'
+import { Card, TCard } from './Card'
 
-export class CardPreview extends Card {
-	protected productId: string = ''
+export type TCardPreview = TCard & {
+	buttonText?: string
+}
 
-	constructor(
-		container: HTMLElement,
-		protected events: IEvents,
-	) {
+export interface ICardPreviewActions {
+	onClick: () => void
+}
+
+export class CardPreview extends Card<TCardPreview> {
+	constructor(container: HTMLElement, actions: ICardPreviewActions) {
 		super(container)
 
 		if (this.button) {
-			this.button.addEventListener('click', () => {
-				this.events.emit('card:buy', { id: this.productId })
-			})
+			this.button.addEventListener('click', actions.onClick)
 		}
 	}
 
-	render(data: IProduct): HTMLElement {
-		super.render(data)
-		this.productId = data.id
+	render(data?: Partial<TCardPreview>): HTMLElement {
+		if (data?.title) this.setTitle(data.title)
+		if (data?.image) this.setCardImage(data.image)
+		if (data?.category) this.setCardCategory(data.category)
+		if (data?.price !== undefined) this.setCardPrice(data.price)
+		if (data?.description) this.setCardDescription(data.description)
 
 		if (this.button) {
 			this.button.textContent = 'В корзину'
-			this.button.disabled = !data.price
+			this.button.disabled = data?.price === null || data?.price === undefined
 		}
 
 		return this.container

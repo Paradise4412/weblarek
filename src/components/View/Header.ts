@@ -1,7 +1,11 @@
 import { Component } from '../base/Component'
 import { IEvents } from '../base/Events'
 
-export class Header extends Component<{ count: number }> {
+export type THeader = {
+	count?: number
+}
+
+export class Header extends Component<THeader> {
 	protected basketButton: HTMLButtonElement
 	protected counter: HTMLElement
 
@@ -19,8 +23,7 @@ export class Header extends Component<{ count: number }> {
 		})
 	}
 
-	render(data: { count: number }): HTMLElement {
-		this.counter.textContent = String(data.count)
-		return this.container
+	set count(value: number) {
+		this.counter.textContent = String(value)
 	}
 }

@@ -1,13 +1,18 @@
-import { IProduct } from '../../types/index'
 import { Component } from '../base/Component'
 
-export class Gallery extends Component<IProduct[]> {
+export type TGallery = {
+	items?: HTMLElement[]
+}
+
+export class Gallery extends Component<TGallery> {
 	constructor(container: HTMLElement) {
 		super(container)
 	}
 
-	render(): HTMLElement {
+	set items(items: HTMLElement[]) {
 		this.container.innerHTML = ''
-		return this.container
+		items.forEach(item => {
+			this.container.appendChild(item)
+		})
 	}
 }

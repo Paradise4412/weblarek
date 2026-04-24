@@ -35,8 +35,4 @@ export class Modal extends Component<object> {
 		this.content.innerHTML = ''
 		this.content.appendChild(value)
 	}
-
-	render(): HTMLElement {
-		return this.container
-	}
 }

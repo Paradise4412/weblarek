@@ -1,7 +1,11 @@
 import { Component } from '../base/Component'
 import { IEvents } from '../base/Events'
 
-export class SuccessView extends Component<{ total: number }> {
+export type TSuccess = {
+	total?: number
+}
+
+export class SuccessView extends Component<TSuccess> {
 	protected closeBtn: HTMLButtonElement
 	protected description: HTMLElement
 
@@ -19,8 +23,7 @@ export class SuccessView extends Component<{ total: number }> {
 		})
 	}
 
-	render(data: { total: number }): HTMLElement {
-		this.description.textContent = `Списано ${data.total} синапсов`
-		return this.container
+	set total(value: number) {
+		this.description.textContent = `Списано ${value} синапсов`
 	}
 }
