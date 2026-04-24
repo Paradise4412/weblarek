@@ -1,26 +1,30 @@
 import { IProduct } from '../../types/index'
+import { IEvents } from '../base/Events'
 
 export class Cart {
 	protected items: IProduct[] = []
 
-	constructor(items: IProduct[] = []) {
-		this.items = items
-	}
+	constructor(protected events: IEvents) {}
 
 	getItems(): IProduct[] {
 		return this.items
 	}
 
 	addItem(item: IProduct): void {
-		this.items.push(item)
+		if (!this.hasItem(item.id)) {
+			this.items.push(item)
+			this.events.emit('cart:change')
+		}
 	}
 
-	removeItem(item: IProduct): void {
-		this.items = this.items.filter(el => el.id !== item.id)
+	removeItem(id: string): void {
+		this.items = this.items.filter(el => el.id !== id)
+		this.events.emit('cart:change')
 	}
 
 	clear(): void {
 		this.items = []
+		this.events.emit('cart:change')
 	}
 
 	getTotalPrice(): number {
