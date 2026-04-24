@@ -240,12 +240,12 @@ interface IBuyer {
 9. OrderForm.t - Форма адреса доставки и способа оплаты
    - Наследует Form
    - Выбранная кнопка получает класс `button_alt-active`
-   - Генерирует события: `order:address`, `order:payment`, `order:submit`
+   - Генерирует события `order:address`, `order:payment`, `order:submit`
 
-10. ContactsForm.ts - Форма контактных данных (email и телефон)
+10. ContactsForm.ts - Форма контактных данных
     - Наследует Form
     - Два текстовых поля
-    - Генерирует события: `contacts:email`, `contacts:phone`, `contacts:submit`
+    - Генерирует события `contacts:email`, `contacts:phone`, `contacts:submit`
 
 11. SuccessView.ts - Экран успешного оформления заказа
     - Показывает сообщение с суммой списания
