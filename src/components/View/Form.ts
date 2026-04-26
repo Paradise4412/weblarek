@@ -13,7 +13,10 @@ export class Form extends Component<Partial<IBuyer>> {
 	) {
 		super(container)
 
-		this.form = container.querySelector('form')!
+		this.form =
+			container instanceof HTMLFormElement
+				? container
+				: container.querySelector('form')!
 		this.submitBtn = this.form.querySelector('[type="submit"]')!
 		this.errorContainer = this.form.querySelector('.form__errors')!
 	}

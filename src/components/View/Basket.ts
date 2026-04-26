@@ -34,4 +34,8 @@ export class Basket extends Component<TBasket> {
 	set total(value: number) {
 		this.price.textContent = value + ' синапсов'
 	}
+
+	toggleCheckoutButton(hasItems: boolean): void {
+		this.button.disabled = !hasItems
+	}
 }

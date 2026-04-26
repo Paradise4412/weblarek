@@ -38,8 +38,11 @@ const gallery = new Gallery(galleryElement)
 const cardCatalogTemplate = document.querySelector(
 	'#card-catalog',
 ) as HTMLTemplateElement
+const cardPreviewTemplate = document.querySelector(
+	'#card-preview',
+) as HTMLTemplateElement
 const cartItemTemplate = document.querySelector(
-	'#basket-item',
+	'#card-basket',
 ) as HTMLTemplateElement
 const basketTemplate = document.querySelector('#basket') as HTMLTemplateElement
 const orderTemplate = document.querySelector('#order') as HTMLTemplateElement
@@ -52,18 +55,27 @@ const successTemplate = document.querySelector(
 
 let currentStep = 1
 
+let cardPreview: CardPreview | null = null
 let basket: Basket | null = null
 let orderForm: OrderForm | null = null
 let contactsForm: ContactsForm | null = null
 let successView: SuccessView | null = null
+
+let cardPreviewContainer: HTMLElement | null = null
+let basketContainer: HTMLElement | null = null
+let orderContainer: HTMLElement | null = null
+let contactsContainer: HTMLElement | null = null
+let successContainer: HTMLElement | null = null
 
 events.on('catalog:change', () => {
 	const products = productCatalog.getProducts()
 	const cardElements = products.map(product => {
 		const cardTemplate = cardCatalogTemplate.content.cloneNode(
 			true,
+		) as DocumentFragment
+		const cardElement = (cardTemplate as any).querySelector(
+			'.card',
 		) as HTMLElement
-		const cardElement = cardTemplate.querySelector('.card') as HTMLElement
 		const cardView = new CardCatalog(cardElement, {
 			onClick: () => {
 				events.emit('card:select', { id: product.id })
@@ -94,16 +106,39 @@ events.on('card:select', (data: { id: string }) => {
 events.on('product:selected', () => {
 	const product = productCatalog.getSelectedProduct()
 	if (product) {
-		const modalContent = modal.modalContent
-		if (modalContent && modalContent.querySelector('.card_full')) {
-			const inCart = cart.hasItem(product.id)
-			const cardElement = modalContent.querySelector('.card') as HTMLElement
-			const cardPreview = new CardPreview(cardElement, {
-				onClick: () => {
-					events.emit('card:buy', { id: product.id })
-				},
+		if (!cardPreview || !cardPreviewContainer) {
+			const cardPreviewElement = cardPreviewTemplate.content.cloneNode(
+				true,
+			) as DocumentFragment
+			cardPreviewContainer = (cardPreviewElement as any).querySelector(
+				'.card',
+			) as HTMLElement
+			if (cardPreviewContainer) {
+				cardPreview = new CardPreview(cardPreviewContainer, {
+					onClick: () => {
+						const product = productCatalog.getSelectedProduct()
+						if (product) {
+							events.emit('card:buy', { id: product.id })
+						}
+					},
+				})
+			}
+		}
+
+		if (cardPreview && cardPreviewContainer) {
+			cardPreview.render({
+				title: product.title,
+				image: product.image,
+				category: product.category,
+				price: product.price,
+				description: product.description,
 			})
+
+			const inCart = cart.hasItem(product.id)
 			cardPreview.setButtonState(inCart, !product.price)
+
+			modal.modalContent = cardPreviewContainer
+			modal.open()
 		}
 	}
 })
@@ -124,50 +159,75 @@ events.on('cart:change', () => {
 	header.render({ count: cart.getItemCount() })
 
 	const selected = productCatalog.getSelectedProduct()
-	if (selected) {
-		events.emit('product:selected', {})
+	if (selected && cardPreview) {
+		const inCart = cart.hasItem(selected.id)
+		cardPreview.setButtonState(inCart, !selected.price)
+	}
+
+	if (basketContainer && modal.modalContent === basketContainer) {
+		updateBasketView()
 	}
 })
 
-events.on('basket:open', () => {
-	const items = cart.getItems()
-	const basketContainer = basketTemplate.content.cloneNode(true) as HTMLElement
-	const basketElement = basketContainer.querySelector('.basket') as HTMLElement
-
-	if (!basket) {
-		basket = new Basket(basketElement, events)
+function updateBasketView(): void {
+	if (!basket || !basketContainer) {
+		const basketElement = basketTemplate.content.cloneNode(
+			true,
+		) as DocumentFragment
+		basketContainer = basketElement.firstElementChild as HTMLElement
+		if (basketContainer) {
+			basket = new Basket(basketContainer, events)
+		}
 	}
 
-	const itemElements = items.map((item, index) => {
-		const itemTemplate = cartItemTemplate.content.cloneNode(true) as HTMLElement
-		const itemElement = itemTemplate.querySelector(
-			'.basket__item',
-		) as HTMLElement
-		const itemView = new CartItem(itemElement, {
-			onDelete: () => {
-				events.emit('basket:remove', { id: item.id })
-			},
+	if (!basket || !basketContainer) {
+		return
+	}
+
+	const items = cart.getItems()
+
+	if (items.length === 0) {
+		const emptyDiv = document.createElement('div')
+		emptyDiv.innerHTML =
+			'<p style="text-align: center; padding: 20px;">Корзина пуста</p>'
+		basket.items = emptyDiv
+		basket.toggleCheckoutButton(false)
+	} else {
+		const itemsContainer = document.createElement('ul')
+		itemsContainer.className = 'basket__list'
+
+		items.forEach((item, index) => {
+			const itemTemplate = cartItemTemplate.content.cloneNode(
+				true,
+			) as DocumentFragment
+			const itemElement = (itemTemplate as any).querySelector(
+				'.basket__item',
+			) as HTMLElement
+			const itemView = new CartItem(itemElement, {
+				onDelete: () => {
+					events.emit('basket:remove', { id: item.id })
+				},
+			})
+
+			itemView.render({
+				title: item.title,
+				price: item.price,
+				index: index + 1,
+			})
+
+			itemsContainer.appendChild(itemElement)
 		})
 
-		itemView.render({
-			title: item.title,
-			price: item.price,
-			index: index + 1,
-		})
+		basket.items = itemsContainer
+		basket.toggleCheckoutButton(true)
+	}
 
-		return itemElement
-	})
+	basket.total = cart.getTotalPrice()
+}
 
-	const itemsContainer = document.createElement('ul')
-	itemsContainer.className = 'basket__list'
-	itemElements.forEach(el => itemsContainer.appendChild(el))
-
-	basket.render({
-		items: itemsContainer,
-		total: cart.getTotalPrice(),
-	})
-
-	modal.modalContent = basketElement
+events.on('basket:open', () => {
+	updateBasketView()
+	modal.modalContent = basketContainer!
 	modal.open()
 })
 
@@ -176,24 +236,30 @@ events.on('basket:remove', (data: { id: string }) => {
 })
 
 events.on('basket:checkout', () => {
-	modal.close()
 	currentStep = 1
-	const orderContainer = orderTemplate.content.cloneNode(true) as HTMLElement
-	const orderElement = orderContainer.querySelector('form') as HTMLElement
 
-	if (!orderForm) {
-		orderForm = new OrderForm(orderElement, events)
+	if (!orderForm || !orderContainer) {
+		const orderElement = orderTemplate.content.cloneNode(
+			true,
+		) as DocumentFragment
+		orderContainer = orderElement.firstElementChild as HTMLElement
+		if (orderContainer) {
+			orderForm = new OrderForm(orderContainer, events)
+		}
 	}
 
-	const buyerData = buyer.getBuyer()
-	orderForm.render()
-	orderForm.address = buyerData.address
+	if (orderForm && orderContainer) {
+		const buyerData = buyer.getBuyer()
+		orderForm.address = buyerData.address
+		if (buyerData.payment) {
+			orderForm.payment = buyerData.payment
+		}
 
-	const errors = buyer.validate()
-	orderForm.setErrors(errors)
+		const errors = buyer.validate()
+		orderForm.setErrors(errors)
 
-	modal.modalContent = orderElement
-	modal.open()
+		modal.modalContent = orderContainer
+	}
 })
 
 events.on('order:address', (data: { address: string }) => {
@@ -209,28 +275,35 @@ events.on('buyer:change', () => {
 	if (currentStep === 1 && orderForm) {
 		orderForm.setErrors(errors)
 	}
+	if (currentStep === 2 && contactsForm) {
+		contactsForm.setErrors(errors)
+	}
 })
 
 events.on('order:submit', () => {
 	currentStep = 2
-	const contactsContainer = contactsTemplate.content.cloneNode(
-		true,
-	) as HTMLElement
-	const contactsElement = contactsContainer.querySelector('form') as HTMLElement
 
-	if (!contactsForm) {
-		contactsForm = new ContactsForm(contactsElement, events)
+	if (!contactsForm || !contactsContainer) {
+		const contactsElement = contactsTemplate.content.cloneNode(
+			true,
+		) as DocumentFragment
+		contactsContainer = contactsElement.firstElementChild as HTMLElement
+		if (contactsContainer) {
+			contactsForm = new ContactsForm(contactsContainer, events)
+		}
 	}
 
-	const buyerData = buyer.getBuyer()
-	contactsForm.render()
-	contactsForm.email = buyerData.email
-	contactsForm.phone = buyerData.phone
+	if (contactsForm && contactsContainer) {
+		const buyerData = buyer.getBuyer()
+		contactsForm.email = buyerData.email
+		contactsForm.phone = buyerData.phone
 
-	const errors = buyer.validate()
-	contactsForm.setErrors(errors)
+		const errors = buyer.validate()
+		contactsForm.setErrors(errors)
 
-	modal.modalContent = contactsElement
+		modal.modalContent = contactsContainer
+		modal.open()
+	}
 })
 
 events.on('contacts:email', (data: { email: string }) => {
@@ -256,21 +329,23 @@ events.on('contacts:submit', () => {
 	apiService
 		.submitOrder(order)
 		.then(() => {
-			const successContainer = successTemplate.content.cloneNode(
-				true,
-			) as HTMLElement
-			const successElement = successContainer.querySelector(
-				'.order-success',
-			) as HTMLElement
-
-			if (!successView) {
-				successView = new SuccessView(successElement, events)
+			if (!successView || !successContainer) {
+				const successElement = successTemplate.content.cloneNode(
+					true,
+				) as DocumentFragment
+				successContainer = successElement.firstElementChild as HTMLElement
+				if (successContainer) {
+					successView = new SuccessView(successContainer, events)
+				}
 			}
 
-			successView.render({ total: cart.getTotalPrice() })
-			modal.modalContent = successElement
-			cart.clear()
-			buyer.clear()
+			if (successView && successContainer) {
+				successView.total = cart.getTotalPrice()
+				modal.modalContent = successContainer
+				modal.open()
+				cart.clear()
+				buyer.clear()
+			}
 		})
 		.catch(err => console.error('ошибка при отправке заказа:', err))
 })
