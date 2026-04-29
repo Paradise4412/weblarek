@@ -1,6 +1,10 @@
+import { CDN_URL, categoryMap } from '../../utils/constants'
 import { Card, TCard } from './Card'
 
 export type TCardPreview = TCard & {
+	image?: string
+	category?: string
+	description?: string
 	buttonText?: string
 }
 
@@ -9,11 +13,44 @@ export interface ICardPreviewActions {
 }
 
 export class CardPreview extends Card<TCardPreview> {
+	protected cardImage: HTMLImageElement | null
+	protected cardCategory: HTMLElement | null
+	protected cardDescription: HTMLElement | null
+	protected button: HTMLButtonElement | null
+
 	constructor(container: HTMLElement, actions: ICardPreviewActions) {
 		super(container)
 
+		this.cardImage = container.querySelector('.card__image')
+		this.cardCategory = container.querySelector('.card__category')
+		this.cardDescription = container.querySelector('.card__text')
+		this.button = container.querySelector('.card__button')
+
 		if (this.button) {
 			this.button.addEventListener('click', actions.onClick)
+		}
+	}
+
+	private setCardImage(value: string): void {
+		if (this.cardImage) {
+			this.cardImage.src = CDN_URL + '/' + value
+		}
+	}
+
+	private setCardCategory(value: string): void {
+		if (this.cardCategory) {
+			const categoryClass = categoryMap[value as keyof typeof categoryMap]
+			this.cardCategory.className = 'card__category'
+			if (categoryClass) {
+				this.cardCategory.classList.add(categoryClass)
+			}
+			this.cardCategory.textContent = value
+		}
+	}
+
+	private setCardDescription(value: string): void {
+		if (this.cardDescription) {
+			this.cardDescription.textContent = value
 		}
 	}
 

@@ -25,5 +25,6 @@ export class Header extends Component<THeader> {
 
 	set count(value: number) {
 		this.counter.textContent = String(value)
+		this.basketButton.disabled = value === 0
 	}
 }

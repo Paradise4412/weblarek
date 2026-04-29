@@ -1,5 +1,6 @@
 import { IEvents } from '../base/Events'
 import { Form } from './Form'
+import { TPayment } from '../../types/index'
 
 export class OrderForm extends Form {
 	protected addressInput: HTMLInputElement
@@ -21,7 +22,10 @@ export class OrderForm extends Form {
 
 		this.paymentButtons.forEach(btn => {
 			btn.addEventListener('click', () => {
-				this.events.emit('order:payment', { payment: btn.getAttribute('name') })
+				const payment = btn.getAttribute('name')
+				if (payment === 'card' || payment === 'cash') {
+					this.events.emit('order:payment', { payment })
+				}
 			})
 		})
 
@@ -35,11 +39,10 @@ export class OrderForm extends Form {
 		this.addressInput.value = value
 	}
 
-	set payment(value: string | null) {
-		if (!value) return
+	set payment(value: TPayment | null) {
 		this.paymentButtons.forEach(btn => {
 			btn.classList.remove('button_alt-active')
-			if (btn.getAttribute('name') === value) {
+			if (value && btn.getAttribute('name') === value) {
 				btn.classList.add('button_alt-active')
 			}
 		})

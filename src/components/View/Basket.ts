@@ -2,7 +2,7 @@ import { Component } from '../base/Component'
 import { IEvents } from '../base/Events'
 
 export type TBasket = {
-	items?: HTMLElement
+	items?: HTMLElement[]
 	total?: number
 }
 
@@ -26,9 +26,8 @@ export class Basket extends Component<TBasket> {
 		})
 	}
 
-	set items(value: HTMLElement) {
-		this.list.innerHTML = ''
-		this.list.appendChild(value)
+	set items(items: HTMLElement[]) {
+		this.list.replaceChildren(...items)
 	}
 
 	set total(value: number) {
@@ -37,5 +36,9 @@ export class Basket extends Component<TBasket> {
 
 	toggleCheckoutButton(hasItems: boolean): void {
 		this.button.disabled = !hasItems
+	}
+
+	render(): HTMLElement {
+		return this.container
 	}
 }

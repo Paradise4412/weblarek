@@ -35,6 +35,14 @@ export class Form extends Component<Partial<IBuyer>> {
 		}
 	}
 
+	setErrorText(text: string): void {
+		this.errorContainer.textContent = text
+	}
+
+	setSubmitEnabled(enabled: boolean): void {
+		this.submitBtn.disabled = !enabled
+	}
+
 	render(): HTMLElement {
 		return this.container
 	}

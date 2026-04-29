@@ -16,6 +16,7 @@ import { OrderForm } from './components/View/OrderForm'
 import { SuccessView } from './components/View/SuccessView'
 import './scss/styles.scss'
 import { API_URL } from './utils/constants'
+import { TPayment } from './types/index'
 
 const events = new EventEmitter()
 
@@ -31,6 +32,7 @@ const modal = new Modal(modalElement, events)
 
 const headerElement = document.querySelector('.header') as HTMLElement
 const header = new Header(headerElement, events)
+header.render({ count: 0 })
 
 const galleryElement = document.querySelector('.gallery') as HTMLElement
 const gallery = new Gallery(galleryElement)
@@ -55,17 +57,40 @@ const successTemplate = document.querySelector(
 
 let currentStep = 1
 
-let cardPreview: CardPreview | null = null
-let basket: Basket | null = null
-let orderForm: OrderForm | null = null
-let contactsForm: ContactsForm | null = null
-let successView: SuccessView | null = null
+const cardPreviewElement = cardPreviewTemplate.content.cloneNode(
+	true,
+) as DocumentFragment
+const cardPreviewContainer = (cardPreviewElement as any).querySelector(
+	'.card',
+) as HTMLElement
+const cardPreview = new CardPreview(cardPreviewContainer, {
+	onClick: () => {
+		const product = productCatalog.getSelectedProduct()
+		if (product) {
+			events.emit('card:buy', { id: product.id })
+		}
+	},
+})
 
-let cardPreviewContainer: HTMLElement | null = null
-let basketContainer: HTMLElement | null = null
-let orderContainer: HTMLElement | null = null
-let contactsContainer: HTMLElement | null = null
-let successContainer: HTMLElement | null = null
+const basketElement = basketTemplate.content.cloneNode(true) as DocumentFragment
+const basketContainer = basketElement.firstElementChild as HTMLElement
+const basket = new Basket(basketContainer, events)
+
+const orderElement = orderTemplate.content.cloneNode(true) as DocumentFragment
+const orderContainer = orderElement.firstElementChild as HTMLElement
+const orderForm = new OrderForm(orderContainer, events)
+
+const contactsElement = contactsTemplate.content.cloneNode(
+	true,
+) as DocumentFragment
+const contactsContainer = contactsElement.firstElementChild as HTMLElement
+const contactsForm = new ContactsForm(contactsContainer, events)
+
+const successElement = successTemplate.content.cloneNode(
+	true,
+) as DocumentFragment
+const successContainer = successElement.firstElementChild as HTMLElement
+const successView = new SuccessView(successContainer, events)
 
 events.on('catalog:change', () => {
 	const products = productCatalog.getProducts()
@@ -106,46 +131,25 @@ events.on('card:select', (data: { id: string }) => {
 events.on('product:selected', () => {
 	const product = productCatalog.getSelectedProduct()
 	if (product) {
-		if (!cardPreview || !cardPreviewContainer) {
-			const cardPreviewElement = cardPreviewTemplate.content.cloneNode(
-				true,
-			) as DocumentFragment
-			cardPreviewContainer = (cardPreviewElement as any).querySelector(
-				'.card',
-			) as HTMLElement
-			if (cardPreviewContainer) {
-				cardPreview = new CardPreview(cardPreviewContainer, {
-					onClick: () => {
-						const product = productCatalog.getSelectedProduct()
-						if (product) {
-							events.emit('card:buy', { id: product.id })
-						}
-					},
-				})
-			}
-		}
+		cardPreview.render({
+			title: product.title,
+			image: product.image,
+			category: product.category,
+			price: product.price,
+			description: product.description,
+		})
 
-		if (cardPreview && cardPreviewContainer) {
-			cardPreview.render({
-				title: product.title,
-				image: product.image,
-				category: product.category,
-				price: product.price,
-				description: product.description,
-			})
+		const inCart = cart.hasItem(product.id)
+		cardPreview.setButtonState(inCart, !product.price)
 
-			const inCart = cart.hasItem(product.id)
-			cardPreview.setButtonState(inCart, !product.price)
-
-			modal.modalContent = cardPreviewContainer
-			modal.open()
-		}
+		modal.modalContent = cardPreviewContainer
+		modal.open()
 	}
 })
 
 events.on('card:buy', (data: { id: string }) => {
 	const product = productCatalog.getProductById(data.id)
-	if (product && product.price) {
+	if (product?.price) {
 		if (cart.hasItem(product.id)) {
 			cart.removeItem(product.id)
 		} else {
@@ -157,46 +161,16 @@ events.on('card:buy', (data: { id: string }) => {
 
 events.on('cart:change', () => {
 	header.render({ count: cart.getItemCount() })
-
-	const selected = productCatalog.getSelectedProduct()
-	if (selected && cardPreview) {
-		const inCart = cart.hasItem(selected.id)
-		cardPreview.setButtonState(inCart, !selected.price)
-	}
-
-	if (basketContainer && modal.modalContent === basketContainer) {
-		updateBasketView()
-	}
 })
 
 function updateBasketView(): void {
-	if (!basket || !basketContainer) {
-		const basketElement = basketTemplate.content.cloneNode(
-			true,
-		) as DocumentFragment
-		basketContainer = basketElement.firstElementChild as HTMLElement
-		if (basketContainer) {
-			basket = new Basket(basketContainer, events)
-		}
-	}
-
-	if (!basket || !basketContainer) {
-		return
-	}
-
 	const items = cart.getItems()
 
 	if (items.length === 0) {
-		const emptyDiv = document.createElement('div')
-		emptyDiv.innerHTML =
-			'<p style="text-align: center; padding: 20px;">Корзина пуста</p>'
-		basket.items = emptyDiv
+		basket.items = []
 		basket.toggleCheckoutButton(false)
 	} else {
-		const itemsContainer = document.createElement('ul')
-		itemsContainer.className = 'basket__list'
-
-		items.forEach((item, index) => {
+		const itemElements = items.map((item, index) => {
 			const itemTemplate = cartItemTemplate.content.cloneNode(
 				true,
 			) as DocumentFragment
@@ -215,10 +189,10 @@ function updateBasketView(): void {
 				index: index + 1,
 			})
 
-			itemsContainer.appendChild(itemElement)
+			return itemElement
 		})
 
-		basket.items = itemsContainer
+		basket.items = itemElements
 		basket.toggleCheckoutButton(true)
 	}
 
@@ -227,7 +201,7 @@ function updateBasketView(): void {
 
 events.on('basket:open', () => {
 	updateBasketView()
-	modal.modalContent = basketContainer!
+	modal.modalContent = basket.render()
 	modal.open()
 })
 
@@ -238,72 +212,66 @@ events.on('basket:remove', (data: { id: string }) => {
 events.on('basket:checkout', () => {
 	currentStep = 1
 
-	if (!orderForm || !orderContainer) {
-		const orderElement = orderTemplate.content.cloneNode(
-			true,
-		) as DocumentFragment
-		orderContainer = orderElement.firstElementChild as HTMLElement
-		if (orderContainer) {
-			orderForm = new OrderForm(orderContainer, events)
-		}
-	}
+	const buyerData = buyer.getBuyer()
+	orderForm.address = buyerData.address
+	orderForm.payment = buyerData.payment
 
-	if (orderForm && orderContainer) {
-		const buyerData = buyer.getBuyer()
-		orderForm.address = buyerData.address
-		if (buyerData.payment) {
-			orderForm.payment = buyerData.payment
-		}
+	const errors = buyer.validate()
+	const { payment, address } = errors
+	orderForm.setErrorText(
+		[payment, address].filter(Boolean).join('; '),
+	)
+	orderForm.setSubmitEnabled(!payment && !address)
 
-		const errors = buyer.validate()
-		orderForm.setErrors(errors)
-
-		modal.modalContent = orderContainer
-	}
+	modal.modalContent = orderContainer
+	modal.open()
 })
 
 events.on('order:address', (data: { address: string }) => {
 	buyer.saveBuyerData({ address: data.address })
 })
 
-events.on('order:payment', (data: { payment: string }) => {
-	buyer.saveBuyerData({ payment: data.payment as any })
+events.on('order:payment', (data: { payment: TPayment }) => {
+	buyer.saveBuyerData({ payment: data.payment })
 })
 
 events.on('buyer:change', () => {
+	const buyerData = buyer.getBuyer()
 	const errors = buyer.validate()
-	if (currentStep === 1 && orderForm) {
-		orderForm.setErrors(errors)
-	}
-	if (currentStep === 2 && contactsForm) {
-		contactsForm.setErrors(errors)
-	}
+
+	const { payment, address, email, phone } = errors
+
+	orderForm.payment = buyerData.payment
+	orderForm.address = buyerData.address
+	orderForm.setErrorText(
+		[payment, address].filter(Boolean).join('; '),
+	)
+	orderForm.setSubmitEnabled(!payment && !address)
+
+	contactsForm.email = buyerData.email
+	contactsForm.phone = buyerData.phone
+	contactsForm.setErrorText(
+		[email, phone].filter(Boolean).join('; '),
+	)
+	contactsForm.setSubmitEnabled(!email && !phone)
 })
 
 events.on('order:submit', () => {
 	currentStep = 2
 
-	if (!contactsForm || !contactsContainer) {
-		const contactsElement = contactsTemplate.content.cloneNode(
-			true,
-		) as DocumentFragment
-		contactsContainer = contactsElement.firstElementChild as HTMLElement
-		if (contactsContainer) {
-			contactsForm = new ContactsForm(contactsContainer, events)
-		}
-	}
+	const buyerData = buyer.getBuyer()
+	contactsForm.email = buyerData.email
+	contactsForm.phone = buyerData.phone
 
-	if (contactsForm && contactsContainer) {
-		const buyerData = buyer.getBuyer()
-		contactsForm.email = buyerData.email
-		contactsForm.phone = buyerData.phone
+	const errors = buyer.validate()
+	const { email, phone } = errors
+	contactsForm.setErrorText(
+		[email, phone].filter(Boolean).join('; '),
+	)
+	contactsForm.setSubmitEnabled(!email && !phone)
 
-		const errors = buyer.validate()
-		contactsForm.setErrors(errors)
-
-		modal.modalContent = contactsContainer
-		modal.open()
-	}
+	modal.modalContent = contactsContainer
+	modal.open()
 })
 
 events.on('contacts:email', (data: { email: string }) => {
@@ -329,23 +297,11 @@ events.on('contacts:submit', () => {
 	apiService
 		.submitOrder(order)
 		.then(() => {
-			if (!successView || !successContainer) {
-				const successElement = successTemplate.content.cloneNode(
-					true,
-				) as DocumentFragment
-				successContainer = successElement.firstElementChild as HTMLElement
-				if (successContainer) {
-					successView = new SuccessView(successContainer, events)
-				}
-			}
-
-			if (successView && successContainer) {
-				successView.total = cart.getTotalPrice()
-				modal.modalContent = successContainer
-				modal.open()
-				cart.clear()
-				buyer.clear()
-			}
+			successView.total = cart.getTotalPrice()
+			modal.modalContent = successContainer
+			modal.open()
+			cart.clear()
+			buyer.clear()
 		})
 		.catch(err => console.error('ошибка при отправке заказа:', err))
 })
@@ -354,9 +310,9 @@ events.on('success:close', () => {
 	modal.close()
 })
 
-apiService
-	.getProducts()
-	.then(data => {
-		productCatalog.setProducts(data.items)
-	})
-	.catch(err => console.error('ошибка при загрузке товаров:', err))
+try {
+	const data = await apiService.getProducts()
+	productCatalog.setProducts(data.items)
+} catch (err) {
+	console.error('ошибка при загрузке товаров:', err)
+}
